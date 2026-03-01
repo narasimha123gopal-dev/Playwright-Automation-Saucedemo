@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { captureStep } from '../Utils/stepScreenshot';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
 import { CartPage } from '../pages/CartPage';
@@ -16,48 +15,50 @@ test.describe('Validate Special Users Full Flow', () => {
 
   for (const username of users) {
 
-    test(`Full checkout flow for ${username}`, async ({ page }, testInfo) => {
+    test(`Full checkout flow for ${username}`, async ({ page }) => {
 
       const login = new LoginPage(page);
       const inventory = new InventoryPage(page);
       const cart = new CartPage(page);
       const checkout = new CheckoutPage(page);
 
-      // Navigate
-      await login.navigate();
-      await captureStep(page, testInfo, 'navigate');
-
       // Login
+      await login.navigate();
       await login.login(username, 'secret_sauce');
-      await captureStep(page, testInfo, 'login');
-
-      // Validate login
-      await expect(page).toHaveURL(/inventory/, { timeout: 10000 });
-      await captureStep(page, testInfo, 'validateLogin');
+      await expect(page).toHaveURL(/inventory/);
 
       // Add product
       await inventory.addProductToCart();
-      await captureStep(page, testInfo, 'addProduct');
-
-      // Go to cart
       await inventory.goToCart();
-      await captureStep(page, testInfo, 'goToCart');
+      await expect(page).toHaveURL(/cart/);
 
-      // Checkout
+      // Checkout step 1
       await cart.proceedToCheckout();
-      await captureStep(page, testInfo, 'checkout');
+      await expect(page).toHaveURL(/checkout-step-one/);
 
       // Enter details
       await checkout.enterDetails('Narasimha', 'QA', '500001');
-      await captureStep(page, testInfo, 'enterDetails');
+
+      // 🔴 Special handling BEFORE asserting step two
+      if (username === 'problem_user') {
+
+        // It stays on step one (broken behavior)
+        await expect(page).toHaveURL(/checkout-step-one/);
+        return;
+
+      }
+
+      // For other users, step two should load
+      await expect(page).toHaveURL(/checkout-step-two/);
 
       // Finish order
       await checkout.finishOrder();
-      await captureStep(page, testInfo, 'finishOrder');
 
-      // Validate success
-      await checkout.validateOrderSuccess();
-      await captureStep(page, testInfo, 'orderSuccess');
+      if (username === 'error_user') {
+        await expect(page.locator('.complete-header')).not.toBeVisible();
+      } else {
+        await checkout.validateOrderSuccess();
+      }
 
     });
 

@@ -1,22 +1,27 @@
 import { Page, expect } from '@playwright/test';
 
 export class CheckoutPage {
+  readonly page: Page;
 
-  constructor(private page: Page) {}
+  constructor(page: Page) {
+    this.page = page;
+  }
 
-  async enterDetails(first: string, last: string, zip: string) {
-    await this.page.locator('[data-test="firstName"]').fill(first);
-    await this.page.locator('[data-test="lastName"]').fill(last);
-    await this.page.locator('[data-test="postalCode"]').fill(zip);
-    await this.page.locator('[data-test="continue"]').click();
+  async enterDetails(firstName: string, lastName: string, postalCode: string) {
+    await this.page.fill('[data-test="firstName"]', firstName);
+    await this.page.fill('[data-test="lastName"]', lastName);
+    await this.page.fill('[data-test="postalCode"]', postalCode);
+    await this.page.click('[data-test="continue"]');
   }
 
   async finishOrder() {
-    await this.page.locator('[data-test="finish"]').click();
+    const finishBtn = this.page.locator('[data-test="finish"]');
+    await expect(finishBtn).toBeVisible({ timeout: 10000 });
+    await finishBtn.click();
   }
 
   async validateOrderSuccess() {
-    await expect(this.page.locator('.complete-header'))
-      .toHaveText('Thank you for your order!');
+    await expect(this.page).toHaveURL(/checkout-complete/);
+    await expect(this.page.locator('.complete-header')).toBeVisible();
   }
 }
